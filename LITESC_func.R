@@ -1,6 +1,6 @@
 rm(list=ls())
 
-lib=c("rvest","lubridate","ggplot2")
+lib=c("rvest","lubridate","ggplot2","reshape2")
 for(i in lib){
   if(!require(i,character.only = TRUE)){install.packages(i);require(i,character.only = TRUE)}
 }
@@ -109,3 +109,39 @@ Buoy_csv=function(path,tz="UTC",Trange=NA){
   return(buoy_res)
 }
 
+############################
+
+#temp difference between land and lake
+LL_Temp_diff=function(land,lake){
+  temp_diff=NULL
+  for(i in 1:dim(land)[1]){
+    tim=land$TimeUnix[i]
+    temp_lake=lake[lake$TimeUnix<=tim+20*60&lake$TimeUnix>=tim-20*60,]$ATMP%>%mean()
+    temp_land=land$Temperature[i]
+    temp_diff=c(temp_diff,temp_land-temp_lake)
+  }
+  return(data.frame(time=land$TimeUnix,diff=temp_diff))
+}
+
+
+plot_LL_temp_diff=function(land,lake,loc,png=T){
+  tz="America/Detroit"
+  time_up=land$TimeUnix[1]-60
+  time_low=land$TimeUnix[dim(land)[1]]+60
+  lake=lake[lake$TimeUnix>=time_up&lake$TimeUnix<=time_low,]
+  tmax=max(max(land$Temperature,na.rm=T),min(lake$ATMP,na.rm=T))
+  tmin=min(min(land$Temperature,na.rm=T),min(lake$ATMP,na.rm=T))
+  p1=ggplot(land,aes(x=TimeUnix%>%as.POSIXct(tz)))+
+    geom_line(data=land,aes(y=Temperature,color="land_temp"),size=0.6)+
+    geom_line(data=lake,aes(y=ATMP,color="lake_temp"),size=0.6)
+  p1=p1+xlab("Time")+ylab("Temperature (degree C)")+ggtitle(paste0(loc,": Temp of Land and Lake"))+
+    scale_y_continuous(breaks=seq(-50,50,by=1),limits=c(tmin-0.5,tmax+0.5))+
+    scale_color_manual(values = c(land_temp= "red", lake_temp= "blue"))
+  if(time_low-time_up>24*60*60){breaktime=6*60*60}else{breaktime=60*60}
+  p1=p1+scale_x_datetime(breaks=seq(as.POSIXct("2024-10-10 11:00"),as.POSIXct("2024-10-30 12:00"),by=breaktime),
+                             date_labels = "%b-%d %H:%M")
+  
+  if(png){png(filename = paste0("Temp_Land&Lake_",loc,".png"),width = 2400,height = 1800,res = 200)}
+  plot(p1)
+  if(png){dev.off()}
+}
