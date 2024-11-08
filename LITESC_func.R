@@ -145,3 +145,49 @@ plot_LL_temp_diff=function(land,lake,loc,png=T){
   plot(p1)
   if(png){dev.off()}
 }
+
+############################
+
+#hobo time series comparison
+plot_hobo_wind=function(dats,nams,buoy,tz="America/Detroit",png=T){
+  len=length(dats)
+  dats[[2]]=dats[[2]][!is.na(dats[[2]]$Temperature),]
+  if(len>2){
+    dats[[3]]=dats[[3]][!is.na(dats[[3]]$Temperature),]
+    te=max(dats[[2]]$TimeUnix[dim(dats[[2]])[1]],
+           dats[[3]]$TimeUnix[dim(dats[[3]])[1]])+60*30
+    ts=min(dats[[2]]$TimeUnix[1],
+           dats[[3]]$TimeUnix[1])-60*30
+  }else{
+      te=dats[[2]]$TimeUnix[dim(dats[[2]])[1]]+60*30
+      ts=dats[[2]]$TimeUnix[1]-60*30
+  }
+  var=c("TempDiff (K)","WindSpeed (m/s)","WindDir (\u00b0)")
+  df=NULL
+  longvar=NULL
+  for(i in 1:len){
+    dat=dats[[i]]
+    diff=LL_Temp_diff(dat,buoy)
+    diff$wind=dat$WindSpeed
+    diff$dir=dat$WindDirection
+    print("pass")
+    if(i==1){diff=diff[diff$time>=ts&diff$time<=te,]}
+    colnames(diff)=c("Time",paste0(nams[i],"_",var))
+    longvar=c(longvar,paste0(nams[i],"_",var))
+    d=reshape2::melt(diff,id.vars = c(1), na.rm = TRUE)
+    if(i==1){df=d}else{df=rbind(df,d)}
+  }
+  date_time=te%>%as.POSIXct(tz=tz)%>%as.Date()%>%as.character()
+  f=ggplot(df, aes(Time%>%as.POSIXct(tz),value))+
+    facet_grid(variable~.,scale="free")+theme_bw()+
+    theme(panel.spacing=unit(0,"lines"))+xlab("Time")+ylab("")+ggtitle(paste0(date_time,": Temp&Wind"))
+  f=f+geom_line(size=0.5)+geom_smooth(color="red",size=0.6)
+  f=f+scale_x_datetime(breaks=seq(as.POSIXct("2024-10-10 11:00"),
+                                  as.POSIXct("2024-10-30 12:00"),
+                                  by=60*60),
+                       date_labels = "%b-%d %H:%M")
+  if(png){png(filename = paste0(date_time,"_Temp&Wind.png"),width = 2500,height = 3000,res = 200)}
+  plot(f)
+  if(png){dev.off()}
+}
+
