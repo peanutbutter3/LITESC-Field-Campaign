@@ -129,7 +129,7 @@ plot_LL_temp_diff=function(land,lake,loc,png=T){
   time_up=land$TimeUnix[1]-60
   time_low=land$TimeUnix[dim(land)[1]]+60
   lake=lake[lake$TimeUnix>=time_up&lake$TimeUnix<=time_low,]
-  tmax=max(max(land$Temperature,na.rm=T),min(lake$ATMP,na.rm=T))
+  tmax=max(max(land$Temperature,na.rm=T),max(lake$ATMP,na.rm=T))
   tmin=min(min(land$Temperature,na.rm=T),min(lake$ATMP,na.rm=T))
   p1=ggplot(land,aes(x=TimeUnix%>%as.POSIXct(tz)))+
     geom_line(data=land,aes(y=Temperature,color="land_temp"),size=0.6)+
